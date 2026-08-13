@@ -1,4 +1,7 @@
 {
   "version": 2,
-  "rewrites": [{ "source": "/release-gate", "destination": "/api/release-gate" }]
+  "rewrites": [
+    { "source": "/release-gate", "destination": "/api/release-gate" },
+    { "source": "/action-firewall", "destination": "/api/action-firewall" }
+  ]
 }
