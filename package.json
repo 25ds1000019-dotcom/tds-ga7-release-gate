@@ -1,0 +1,5 @@
+{
+  "name": "tds-ga7-release-gate",
+  "private": true,
+  "scripts": { "test": "node test.js" }
+}
