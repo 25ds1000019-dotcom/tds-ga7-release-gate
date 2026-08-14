@@ -1,0 +1,10 @@
+module.exports = (req, res) => {
+ const x=req.body, bad=r=>res.status(200).json({safe:false,reason:r}), ok=()=>res.status(200).json({safe:true,reason:'SAFE'});
+ if(!x||typeof x!=='object'||Array.isArray(x)||Object.keys(x).length!==2||!['html','markdown','url','sql','shell'].includes(x.channel)||typeof x.output!=='string'||x.output.length>20000)return bad('INVALID_SCHEMA');
+ const decode=s=>{let q=s;try{q=decodeURIComponent(q)}catch(_){} q=q.replace(/&#x([0-9a-f]+);/gi,(_,h)=>String.fromCharCode(parseInt(h,16))).replace(/&#([0-9]+);/g,(_,n)=>String.fromCharCode(parseInt(n,10))).replace(/&(lt|gt|quot|apos|amp);/gi,(_,n)=>({lt:'<',gt:'>',quot:'"',apos:String.fromCharCode(39),amp:'&'})[n.toLowerCase()]).replace(/\\u([0-9a-f]{4})/gi,(_,h)=>String.fromCharCode(parseInt(h,16)));return q};
+ const urls=(s,c)=>c==='url'?[s.trim()]:c==='markdown'?Array.from(s.matchAll(/\\]\\(([^)\\s]+)\\)/g)).map(m=>m[1]):Array.from(s.matchAll(/(?:src|href)\\s*=\\s*(['"])(.*?)\\1/gi)).map(m=>m[2]);
+ const scheme=s=>/(javascript|data|vbscript)\\s*:/i.test(s);
+ const exfil=(s,c)=>{for(const u0 of urls(s,c)){let u=u0;if(!u)continue;if(u.indexOf('//')===0)u='https:'+u;if(/^[a-z][a-z0-9+.-]*:/i.test(u)){try{const p=new URL(u);if(!['http:','https:'].includes(p.protocol)||!['cdn-j2toujm.example','app-yp2bwi6.example'].includes(p.hostname))return true}catch(_){return true}}}return false};
+ const verdict=(s,c)=>{if(c==='sql')return /['";]|--|\\/\\*|\\bunion\\b|or\\s+1\\s*=\\s*1/i.test(s)?'SQL_METACHAR':'SAFE';if(c==='shell')return /[;&|<>]|\\$\\(|\\$\\{/.test(s)||s.includes(String.fromCharCode(96))?'SHELL_METACHAR':'SAFE';if(c==='html'){if(/<\\s*(script|iframe|object|embed)\\b/i.test(s))return'SCRIPT_TAG';if(/\\bon\\w+\\s*=/i.test(s))return'EVENT_HANDLER'}if(scheme(s))return'DANGEROUS_SCHEME';return exfil(s,c)?'EXTERNAL_EXFIL':'SAFE'};
+ const d=decode(x.output);if(d!==x.output&&verdict(d,x.channel)!=='SAFE')return bad('ENCODED_PAYLOAD');const v=verdict(x.output,x.channel);return v==='SAFE'?ok():bad(v);
+};
